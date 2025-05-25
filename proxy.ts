@@ -156,7 +156,7 @@ class ChromeDebuggerProxy {
         const { method } = request;
         const headers = filterHeaders(request.headers) || undefined;
         const body = (await request.body.getText()) || undefined;
-        const requestRepr = `--> [${method}] ${url.href}`;
+        const requestRepr = `--> [${method}] ${url.origin}${url.pathname}`;
         try {
             const {
                 status: statusCode,
@@ -208,5 +208,9 @@ class ChromeDebuggerProxy {
 
     console.log(kl.blue("Starting the proxy server..."));
     await proxy.startProxy();
-    console.log(kl.gray("Note: 'www' subdomain should be explicitly specified in web requests."));
+    console.log(
+        kl.gray(
+            "Note: subdomains (such as 'www') should be explicitly specified in web requests sent to the proxy.",
+        ),
+    );
 })();
