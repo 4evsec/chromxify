@@ -9,51 +9,26 @@ import { generateCACertificate, getLocal, type CompletedRequest, type Mockttp } 
 import path from "path";
 
 const DEBUGGER_HOST = process.env.CHROME_DEBUGGER_HOST || "127.0.0.1";
-const DEBUGGER_PORT = Number(process.env.CHROME_DEBUGGER_PORT || 9222);
-const PROXY_PORT = Number(process.env.PROXY_PORT || 9090);
-
-interface BrowserTarget {
-    targetId: string;
-    sessionId?: string;
-}
+const DEBUGGER_PORT = process.env.CHROME_DEBUGGER_PORT || 9222;
+const PROXY_PORT = process.env.PROXY_PORT || 9090;
 
 const PAYLOAD = readFileSync(path.join(__dirname, "payload.js"), "utf8");
 
 // The following headers shouldn't be transmitted by the proxy to the browser.
 // https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
-const IGNORED_HEADERS = [
-    "accept-charset",
-    "accept-encoding",
-    "access-control-request-headers",
-    "access-control-request-method",
-    "connection",
-    "content-length",
-    "cookie",
-    "date",
-    "dnt",
-    "expect",
-    "host",
-    "keep-alive",
-    "origin",
-    "permissions-policy",
-    "referer",
-    "te",
-    "trailer",
-    "transfer-encoding",
-    "upgrade",
-    "via",
-];
-
-const IGNORED_HEADER_PREFIXES = ["proxy-", "sec-"];
+const HEADERS_IGNORE = readFileSync(path.join(__dirname, "headers_ignore.txt"), "utf8").split(
+    /\r?\n/,
+);
+const HEADER_PREFIX_IGNORE = ["proxy-", "sec-"];
 
 const filterHeaders = (headers: { [K: string]: any }) =>
     Object.fromEntries(
         Object.entries(headers).filter(
             ([header, value]) =>
                 typeof value === "string" &&
-                !IGNORED_HEADERS.includes(header) &&
-                !IGNORED_HEADER_PREFIXES.some((prefix) => header.startsWith(prefix))
-        )
+                !HEADERS_IGNORE.includes(header) &&
+                !HEADER_PREFIX_IGNORE.some((prefix) => header.startsWith(prefix)),
+        ),
     );
 
 //### UTILS
@@ -69,40 +44,47 @@ function parseURL(url: string): URL {
     }
 }
 
-const truncate = (s: string, maxLength: number) => (s.length > maxLength ? s.slice(0, maxLength - 3) + "..." : s);
+const truncate = (s: string, maxLength: number) =>
+    s.length > maxLength ? s.slice(0, maxLength - 3) + "..." : s;
 //###
+
+type BrowserTarget = { targetId: string; sessionId?: string };
 
 class ChromeDebuggerProxy {
     debuggerClient: CDP.Client;
     proxyServer: Mockttp;
-    targets: { [K: string /* (host) */]: BrowserTarget };
+    targets: { [K: string]: BrowserTarget };
 
-    constructor(public debuggerOptions: CDP.Options, public proxyPort: number) {}
+    constructor(
+        public debuggerOptions: CDP.Options,
+        public proxyPort: number,
+    ) {}
 
-    public async connectToDebugger() {
+    async connectToDebugger() {
         this.debuggerClient = await CDP(this.debuggerOptions);
         await this.loadTargets();
     }
 
-    public async startProxy() {
+    async startProxy() {
         const https = await generateCACertificate();
         this.proxyServer = getLocal({ https });
         this.proxyServer.forAnyRequest().thenCallback(this.proxyHandler.bind(this));
         await this.proxyServer.start(this.proxyPort);
     }
 
-    public async loadTargets() {
+    async loadTargets() {
         this.targets = await this.debuggerClient.Target.getTargets()
             .then((response) =>
                 response.targetInfos
                     .filter(({ url }) => url.startsWith("https://"))
-                    .map(({ url, targetId }) => [parseURL(url).host, { targetId }])
+                    .map(({ url, targetId }) => [parseURL(url).host, { targetId }]),
             )
             .then(Object.fromEntries);
     }
 
-    private async getTarget(url: URL): Promise<BrowserTarget> {
+    async getTarget(url: URL): Promise<BrowserTarget> {
         let target: BrowserTarget;
+
         if (url.host in this.targets) {
             target = this.targets[url.host];
         } else {
@@ -112,25 +94,32 @@ class ChromeDebuggerProxy {
         }
         if (!target.sessionId) {
             const { targetId } = target;
-            const { sessionId } = await this.debuggerClient.Target.attachToTarget({ targetId, flatten: true });
+            const { sessionId } = await this.debuggerClient.Target.attachToTarget({
+                targetId,
+                flatten: true,
+            });
             target.sessionId = sessionId;
             this.targets[url.host] = target;
         }
         return target;
     }
 
-    public async debuggerFetch(method: string, url: URL, headers: object | null = null, body: string | null = null) {
+    async debuggerFetch(
+        method: string,
+        url: URL,
+        headers: object | undefined = undefined,
+        body: string | undefined = undefined,
+    ) {
         const { sessionId } = await this.getTarget(url);
-
-        const fetchOptions = { method, credentials: "include", headers: headers || undefined, body: body || undefined };
+        const fetchOptions = { method, credentials: "include", headers, body };
         const expression = PAYLOAD.replace("{{URL}}", url.href).replace(
             "{{OPTIONS_JSON}}",
-            JSON.stringify(fetchOptions)
+            JSON.stringify(fetchOptions),
         );
         const { result } = await this.debuggerClient.send(
             "Runtime.evaluate",
             { expression, awaitPromise: true, returnByValue: true },
-            sessionId
+            sessionId,
         );
         if (result.subtype === "error") {
             throw new Error(`An error has occured during payload execution: ${result.description}`);
@@ -138,8 +127,9 @@ class ChromeDebuggerProxy {
         return result.value;
     }
 
-    private async proxyHandler(request: CompletedRequest) {
+    async proxyHandler(request: CompletedRequest) {
         const url = parseURL(request.url);
+
         url.protocol = "https://"; // avoid 'mixed content' errors.
         if (url.href !== request.url) {
             console.log(kl.yellow(`Redirecting ${request.url} to ${url.href}`));
@@ -147,8 +137,8 @@ class ChromeDebuggerProxy {
         }
 
         const { method } = request;
-        const headers = filterHeaders(request.headers);
-        const body = await request.body.getText();
+        const headers = filterHeaders(request.headers) || undefined;
+        const body = (await request.body.getText()) || undefined;
         const requestRepr = `--> [${method}] ${truncate(url.href, 80)}`;
         try {
             const {
@@ -171,9 +161,13 @@ class ChromeDebuggerProxy {
 }
 
 (async () => {
-    console.log(kl.yellow("Note: 'www' subdomain should be explicitly specified in web requests."));
+    console.log(kl.gray("Note: 'www' subdomain should be explicitly specified in web requests."));
+
     console.log(kl.blue("Connecting to the debugger..."));
-    const proxy = new ChromeDebuggerProxy({ host: DEBUGGER_HOST, port: DEBUGGER_PORT }, PROXY_PORT);
+    const proxy = new ChromeDebuggerProxy(
+        { host: DEBUGGER_HOST, port: Number(DEBUGGER_PORT) },
+        Number(PROXY_PORT),
+    );
     await proxy.connectToDebugger();
 
     process.stdin.setRawMode(true);
@@ -190,8 +184,8 @@ class ChromeDebuggerProxy {
                 process.exit();
         }
     });
-
     console.log(kl.blue("Press [r] to reload targets."));
+
     console.log(kl.blue("Starting the proxy server..."));
     await proxy.startProxy();
 })();
