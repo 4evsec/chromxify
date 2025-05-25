@@ -7,7 +7,7 @@
     },
     "author": "4evsec",
     "license": "MIT",
-    "description": "Use the Chromium remote debugger to proxify HTTP requests",
+    "description": "Use the Chrome remote debugger to proxify HTTP requests through any Chromium-based browser",
     "dependencies": {
         "chrome-remote-interface": "^0.33.3",
         "kleur": "^4.1.5",

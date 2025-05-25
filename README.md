@@ -1,7 +1,10 @@
-# Use the Chromium remote debugger to proxify HTTP requests
+# Chromxify
 
-_This script starts a local proxy server that forwards HTTP requests to a Chromium
-browser through the remote debugger by executing consecutive `fetch` calls._
+_Use the Chrome remote debugger to proxify HTTP requests through any Chromium-based
+browser_
+
+This script starts a local proxy server that forwards HTTP requests to a Chromium
+browser through the remote debugger by executing consecutive `fetch` calls.
 
 > Note : Remote debugger could be started by using the `--remote-debugging-port` flag.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx ts-node
 /**
- * Use the Chromium remote debugger to proxify HTTP requests.
+ * Use the Chrome remote debugger to proxify HTTP requests through any Chromium-based browser
  *
  * This script starts a local proxy server that forwards HTTP requests to a Chromium browser
  * through the remote debugger by executing consecutive `fetch` calls.
