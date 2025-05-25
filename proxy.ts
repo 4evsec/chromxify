@@ -80,17 +80,20 @@ class ChromeDebuggerProxy {
     ) {}
 
     async connectToDebugger() {
+        console.log(kl.blue("Connecting to the debugger..."));
         this.debuggerClient = await CDP(this.debuggerOptions);
     }
 
     async startProxy() {
+        console.log(kl.blue("Starting the proxy server..."));
         const https = await generateCACertificate();
         this.proxyServer = getLocal({ https });
         this.proxyServer.forAnyRequest().thenCallback(this.proxyHandler.bind(this));
         return await this.proxyServer.start(this.proxyPort);
     }
 
-    async loadTargets(): Promise<string[]> {
+    async loadTargets() {
+        console.log(kl.blue("Loading remote targets..."));
         this.targets = await this.debuggerClient.Target.getTargets()
             .then((response) =>
                 response.targetInfos
@@ -98,7 +101,7 @@ class ChromeDebuggerProxy {
                     .map(({ url, targetId }) => [URL.parse(url).host, { targetId }]),
             )
             .then(Object.fromEntries);
-        return Object.keys(this.targets);
+        console.log(Object.keys(this.targets).toString());
     }
 
     async getTarget(url: URL): Promise<Target> {
@@ -178,15 +181,8 @@ class ChromeDebuggerProxy {
         Number(PROXY_PORT),
         { redirectHTTPS: REDIRECT_HTTPS },
     );
-
-    console.log(kl.blue("Connecting to the debugger..."));
     await proxy.connectToDebugger();
-
-    const loadTargets = async () =>
-        await proxy
-            .loadTargets()
-            .then((targets) => console.log(kl.green(`Loaded targets: ${targets.toString()}`)));
-    await loadTargets();
+    await proxy.loadTargets();
 
     process.stdin.setRawMode(true);
     process.stdin.setEncoding("utf8");
@@ -194,7 +190,7 @@ class ChromeDebuggerProxy {
     process.stdin.on("data", async (key: string) => {
         switch (key) {
             case "r":
-                await loadTargets();
+                await proxy.loadTargets();
                 break;
             case "\u0003":
                 process.exit();
@@ -202,7 +198,6 @@ class ChromeDebuggerProxy {
     });
     console.log(kl.yellow("Press [r] to reload targets."));
 
-    console.log(kl.blue("Starting the proxy server..."));
     await proxy.startProxy();
     console.log(
         kl.gray(
