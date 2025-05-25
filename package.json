@@ -11,7 +11,8 @@
     "dependencies": {
         "chrome-remote-interface": "^0.33.3",
         "kleur": "^4.1.5",
-        "mockttp": "^3.17.0"
+        "mockttp": "^3.17.0",
+        "ts-node": "^10.9.2"
     },
     "devDependencies": {
         "@types/chrome-remote-interface": "^0.31.14",

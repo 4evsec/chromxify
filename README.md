@@ -9,8 +9,8 @@ browser through the remote debugger by executing consecutive `fetch` calls._
 
 ```sh
 npm install
-npm run build
-node proxy.js
+chmod u+x chromxify.ts
+./chromxify.ts
 ```
 
 The following variables could be used as parameters for this script:

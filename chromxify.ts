@@ -1,3 +1,4 @@
+#!/usr/bin/env -S npx ts-node
 /**
  * Use the Chromium remote debugger to proxify HTTP requests.
  *
