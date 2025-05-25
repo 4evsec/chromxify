@@ -18,3 +18,5 @@ trailer
 transfer-encoding
 upgrade
 via
+proxy-.*
+sec-.*

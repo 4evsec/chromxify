@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
  * Use the Chromium remote debugger to proxify HTTP requests.
+ *
+ * This script starts a local proxy server that forwards HTTP requests to a Chromium browser
+ * through the remote debugger by executing consecutive `fetch` calls.
  */
 import CDP from "chrome-remote-interface";
 import { readFileSync } from "fs";
@@ -41,20 +44,19 @@ namespace Fetch {
     }
 }
 
+const PAYLOAD = readFileSync(path.join(__dirname, "payload.js"), "utf8");
+
 // The following headers shouldn't be transmitted by the proxy to the browser.
 // https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
-const HEADERS_IGNORE = readFileSync(path.join(__dirname, "headers_ignore.txt"), "utf8").split(
-    /\r?\n/,
+const HEADERS_IGNORE = new RegExp(
+    readFileSync(path.join(__dirname, "headers_ignore.txt"), "utf8").split(/\r?\n/).join("|"),
+    "i",
 );
-const HEADER_PREFIX_IGNORE = ["proxy-", "sec-"];
 
 const filterHeaders = (headers: { [K: string]: any }) =>
     Object.fromEntries(
         Object.entries(headers).filter(
-            ([header, value]) =>
-                typeof value === "string" &&
-                !HEADERS_IGNORE.includes(header) &&
-                !HEADER_PREFIX_IGNORE.some((prefix) => header.startsWith(prefix)),
+            ([header, value]) => typeof value === "string" && !HEADERS_IGNORE.test(header),
         ),
     );
 
@@ -68,8 +70,6 @@ function parseURL(url: string): URL {
 
 const isUrl = (url: string): boolean =>
     ["http://", "https://"].some((prefix) => url.startsWith(prefix));
-
-const PAYLOAD = readFileSync(path.join(__dirname, "payload.js"), "utf8");
 
 class ChromeDebuggerProxy {
     debuggerClient: CDP.Client;
@@ -204,13 +204,13 @@ class ChromeDebuggerProxy {
                 process.exit();
         }
     });
-    console.log(kl.blue("Press [r] to reload targets."));
+    console.log(kl.yellow("Press [r] to reload targets."));
 
     console.log(kl.blue("Starting the proxy server..."));
     await proxy.startProxy();
     console.log(
         kl.gray(
-            "Note: subdomains (such as 'www') should be explicitly specified in web requests sent to the proxy.",
+            "Note: subdomains (such as 'www') should be explicitly specified in web requests sent through the proxy.",
         ),
     );
 })();
