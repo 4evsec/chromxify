@@ -101,24 +101,21 @@ class ChromeDebuggerProxy {
     }
 
     async getTarget(url: URL): Promise<Target> {
-        let target: Target;
+        let targetId: string, sessionId: string;
         if (url.host in this.targets) {
-            target = this.targets[url.host];
+            ({ targetId, sessionId } = this.targets[url.host]);
         } else {
-            const { targetId } = await this.debuggerClient.Target.createTarget({ url: url.href });
+            ({ targetId } = await this.debuggerClient.Target.createTarget({ url: url.href }));
             await new Promise((r) => setTimeout(r, 1000));
-            target = { targetId };
         }
-
-        if (!target.sessionId) {
+        if (!sessionId) {
             const { sessionId } = await this.debuggerClient.Target.attachToTarget({
-                targetId: target.targetId,
+                targetId,
                 flatten: true,
             });
-            target.sessionId = sessionId;
-            this.targets[url.host] = target;
+            this.targets[url.host] = { targetId, sessionId };
         }
-        return target;
+        return { targetId, sessionId };
     }
 
     async debuggerFetch(url: URL, fetchOptions: Fetch.Options): Promise<Fetch.Result> {
