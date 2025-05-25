@@ -58,7 +58,7 @@ const HEADERS_IGNORE = new RegExp(
     "i",
 );
 
-const filterHeaders = (headers: { [K: string]: any }) =>
+const filterHeaders = (headers: Headers) =>
     Object.fromEntries(
         Object.entries(headers).filter(
             ([header, value]) => typeof value === "string" && !HEADERS_IGNORE.test(header),
