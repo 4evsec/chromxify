@@ -1,5 +1,5 @@
 {
-    "name": "chromexify",
+    "name": "chromxify",
     "version": "1.0.0",
     "main": "proxy.js",
     "scripts": {
