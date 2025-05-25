@@ -29,6 +29,7 @@ interface Target {
 }
 
 interface ProxyOptions {
+    // This option avoids 'mixed content' errors in the target browser.
     redirectHTTPS: boolean;
 }
 
@@ -140,7 +141,7 @@ class ChromeDebuggerProxy {
         const url = URL.parse(request.url);
 
         if (this.proxyOptions.redirectHTTPS) {
-            url.protocol = "https://"; // avoid 'mixed content' errors.
+            url.protocol = "https://";
             if (url.href !== request.url) {
                 console.log(kl.yellow(`Redirecting ${request.url} to ${url.href}`));
                 return { statusCode: 302, headers: { location: url.href } };
