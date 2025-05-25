@@ -60,14 +60,6 @@ const filterHeaders = (headers: { [K: string]: any }) =>
         ),
     );
 
-function parseURL(url: string): URL {
-    try {
-        return URL.parse(url);
-    } catch (err) {
-        throw new Error(`Failed to parse url: ${url}`);
-    }
-}
-
 const isUrl = (url: string): boolean =>
     ["http://", "https://"].some((prefix) => url.startsWith(prefix));
 
@@ -97,7 +89,7 @@ class ChromeDebuggerProxy {
             .then((response) =>
                 response.targetInfos
                     .filter(({ url }) => isUrl(url))
-                    .map(({ url, targetId }) => [parseURL(url).host, { targetId }]),
+                    .map(({ url, targetId }) => [URL.parse(url).host, { targetId }]),
             )
             .then(Object.fromEntries);
         return Object.keys(this.targets);
@@ -143,7 +135,7 @@ class ChromeDebuggerProxy {
     }
 
     async proxyHandler(request: CompletedRequest): Promise<CallbackResponseResult> {
-        const url = parseURL(request.url);
+        const url = URL.parse(request.url);
 
         if (REDIRECT_HTTPS) {
             url.protocol = "https://"; // avoid 'mixed content' errors.
