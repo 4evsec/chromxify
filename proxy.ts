@@ -21,11 +21,15 @@ import path from "path";
 const DEBUGGER_HOST = process.env.CHROME_DEBUGGER_HOST || "127.0.0.1";
 const DEBUGGER_PORT = process.env.CHROME_DEBUGGER_PORT || 9222;
 const PROXY_PORT = process.env.PROXY_PORT || 9090;
-const REDIRECT_HTTPS = process.env.REDIRECT_HTTPS === "false" || true;
+const REDIRECT_HTTPS = !(process.env.REDIRECT_HTTPS === "false"); // true by default
 
 interface Target {
     targetId: string;
     sessionId?: string;
+}
+
+interface ProxyOptions {
+    redirectHTTPS: boolean;
 }
 
 namespace Fetch {
@@ -71,6 +75,7 @@ class ChromeDebuggerProxy {
     constructor(
         public debuggerOptions: CDP.Options,
         public proxyPort: number,
+        public proxyOptions: ProxyOptions = { redirectHTTPS: true },
     ) {}
 
     async connectToDebugger() {
@@ -137,7 +142,7 @@ class ChromeDebuggerProxy {
     async proxyHandler(request: CompletedRequest): Promise<CallbackResponseResult> {
         const url = URL.parse(request.url);
 
-        if (REDIRECT_HTTPS) {
+        if (this.proxyOptions.redirectHTTPS) {
             url.protocol = "https://"; // avoid 'mixed content' errors.
             if (url.href !== request.url) {
                 console.log(kl.yellow(`Redirecting ${request.url} to ${url.href}`));
@@ -173,6 +178,7 @@ class ChromeDebuggerProxy {
     const proxy = new ChromeDebuggerProxy(
         { host: DEBUGGER_HOST, port: Number(DEBUGGER_PORT) },
         Number(PROXY_PORT),
+        { redirectHTTPS: REDIRECT_HTTPS },
     );
 
     console.log(kl.blue("Connecting to the debugger..."));
