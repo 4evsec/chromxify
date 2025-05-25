@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Use the Chromium remote debugger to proxify HTTP requests.
  *

@@ -10,8 +10,7 @@ browser through the remote debugger by executing consecutive `fetch` calls._
 ```sh
 npm install
 npm run build
-chmod u+x proxy.js
-./proxy.js
+node proxy.js
 ```
 
 The following variables could be used as parameters for this script:
