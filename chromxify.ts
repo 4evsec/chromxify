@@ -25,7 +25,7 @@ const REDIRECT_HTTPS = !(process.env.REDIRECT_HTTPS === "false"); // true by def
 
 interface Target {
     targetId: string;
-    sessionId?: string;
+    sessionId: string;
 }
 
 interface ProxyOptions {
@@ -148,12 +148,11 @@ class ChromeDebuggerProxy {
             url.protocol = "https://";
         }
         //...
-        //
-
         if (url.href !== request.url) {
             console.log(kl.yellow(`Redirecting ${request.url} to ${url.href}`));
             return { statusCode: 302, headers: { location: url.href } };
         }
+        //
 
         const { method } = request;
         const headers = filterHeaders(request.headers) || undefined;
