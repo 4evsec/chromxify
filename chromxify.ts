@@ -113,10 +113,10 @@ class ChromeDebuggerProxy {
             await new Promise((r) => setTimeout(r, 1000));
         }
         if (!sessionId) {
-            const { sessionId } = await this.debuggerClient.Target.attachToTarget({
+            ({ sessionId } = await this.debuggerClient.Target.attachToTarget({
                 targetId,
                 flatten: true,
-            });
+            }));
             this.targets[url.host] = { targetId, sessionId };
         }
         return { targetId, sessionId };
